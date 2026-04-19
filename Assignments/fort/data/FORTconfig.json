@@ -1,0 +1,18 @@
+{
+   "Subject": "",
+   "session": 1,
+   "gender": "Female",
+   "language": "Hebrew",
+   "shockType": "Sound",
+   "skipStartle": false,
+   "recordPhysio": false,
+   "skipInstructions": true,
+   "fixationDuration": 3,
+   "fullScreen": true,
+   "screenSize": [
+      1024,
+      768
+   ],
+   "startTime": 1776624322.025219,
+   "port": "COM4"
+}
