@@ -53,9 +53,25 @@ def get_user_input(debug=False):
                        False if not config_exists else loaded_data.get("skipInstructions", False))
     # [8] Fixation duration (seconds) — shown before the P-condition block
     userInput.addField('Fixation Duration (sec)',
-                       FIXATION_DURATION_DEFAULT if not config_exists
-                       else loaded_data.get("fixationDuration", FIXATION_DURATION_DEFAULT))
-    # [9] / [10] / [11] — debug-only fields
+                       str(FIXATION_DURATION_DEFAULT) if not config_exists
+                       else str(loaded_data.get("fixationDuration", FIXATION_DURATION_DEFAULT)))
+    # [9] fMRI Version
+    userInput.addField('fMRI Version',
+                       False if not config_exists else loaded_data.get("fmriVersion", False))
+    # [10] T2 temperature
+    userInput.addField('T2 Temperature',
+                       40.0 if not config_exists else loaded_data.get("T2temp", 40.0))
+    # [11] T4 temperature
+    userInput.addField('T4 Temperature',
+                       44.0 if not config_exists else loaded_data.get("T4temp", 44.0))
+    # [12] T8 temperature
+    userInput.addField('T8 Temperature',
+                       48.0 if not config_exists else loaded_data.get("T8temp", 48.0))
+    # [13] Pain Support (thermode)
+    userInput.addField('Pain Support',
+                       False if not config_exists else loaded_data.get("painSupport", False))
+
+    # [14] / [15] / [16] — debug-only fields
     if debug:
         userInput.addField('Full Screen',
                            True if not config_exists else loaded_data.get("fullScreen", True))

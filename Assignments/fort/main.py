@@ -1,21 +1,17 @@
 """
 FORT Task — main entry point.
 
-Session structure (TIM-style, single session):
+Session structure:
   1. Config dialog
-  2. Welcome screen  (NPU-style, space to continue)
-  3. Pre-session mood VAS  →  BioPac event PreVas_rating (90)
-  4. Instruction slides (optional, NPU-style slides)
-  5. Fixation cross  →  BioPac event Fixation_cross (95), duration configurable
+  2. Welcome screen  (space to continue)
+  3. Pre-session mood VAS  →  BioPac PreVas_rating (90)
+  4. Instruction slides (optional)
+  5. Fixation cross  →  BioPac Fixation_cross (95), configurable duration
   6. P-condition block  (NPU predictable threat, 120 s)
-        Block onset   →  BioPac 110  (P-base 100 + CONDITION_START 10)
-        Cue onset     →  BioPac 120  (100 + CUE_START 20)
-        Cue offset    →  BioPac 130  (100 + CUE_END 30)
-        Startle       →  BioPac +1 relative to current scenario index
-        Shock/Threat  →  BioPac +2 relative to current scenario index
-  7. Post-session mood VAS  →  BioPac event PostRun_rating (92)
-  8. Finish screen
-  9. Export fullDF, miniDF (NPU-style) + Mood (TIM-style)
+  7. TIM block  (single block, 6 trials, ~235-240 s)
+  8. Post-session mood VAS  →  BioPac PostRun_rating (92)
+  9. Finish screen
+ 10. Export fullDF, miniDF (NPU), Mood, Pain (TIM)
 
 Run from fort/ directory:
     python3 main.py
@@ -34,6 +30,7 @@ import helpers
 import blockP
 import VAS
 import serialHandler
+import timBlock
 
 # ---------------------------------------------------------------------------
 # Startup & configuration
@@ -53,10 +50,32 @@ params = {
     "recordPhysio":      configDialogBank[6],
     "skipInstructions":  configDialogBank[7],
     "fixationDuration":  int(configDialogBank[8]) if configDialogBank[8] not in (None, "") else configDialog.FIXATION_DURATION_DEFAULT,
-    "fullScreen":        configDialogBank[9] if debug else True,
+    "fmriVersion":       configDialogBank[9],
+    "T2temp":            configDialogBank[10],
+    "T4temp":            configDialogBank[11],
+    "T8temp":            configDialogBank[12],
+    "painSupport":       configDialogBank[13],
+    "fullScreen":        configDialogBank[14] if debug else True,
     "screenSize":        (1024, 768),
     "startTime":         time.time(),
     "port":              "COM4",
+    # TIM block params
+    'nTrials':                      6,
+    'temps':                        [configDialogBank[10], configDialogBank[11], configDialogBank[12]],
+    'Ts':                           ['T2', 'T4', 'T8'],
+    'colors':                       ['Green', 'Yellow', 'Red'],
+    'fixationBeforeBlock':          8,
+    'preITIMin':                    3,
+    'preITIMax':                    5,
+    'postITIMin':                   7,
+    'postITIMax':                   9,
+    'painRateDuration':             7.0,
+    'secondParadigmSquareOnset':    2,
+    'secondParadigmSquareBlankScreen': 8,
+    'secondParadigmJitterMin':      0,
+    'secondParadigmJitterMax':      1,
+    'preRatingITI':                 2,
+    'fmriStartTime':                0,
 }
 
 if not os.path.exists("./data"):
@@ -73,17 +92,16 @@ print(f"===========================================\n"
 # ---------------------------------------------------------------------------
 ser = (serial.Serial(params["port"], 115200, bytesize=serial.EIGHTBITS, timeout=1)
        if params["recordPhysio"] else None)
+params['serialBiopac'] = ser
 
-# Initialization event (255) — same as both NPU and TIM
 serialHandler.report_event(ser, 255)
 
 # ---------------------------------------------------------------------------
 # Data frames
 # ---------------------------------------------------------------------------
-params, df, mini_df, mood_df = dataHandler.setup_data_frames(params)
+params, df, mini_df, mood_df, pain_df = dataHandler.setup_data_frames(params)
 params["startTime"] = time.time()
 
-# Initial record
 temp_dict = dataHandler.create_dict_for_df(params, Step="Start")
 temp_dict["CurrentTime"] = 0.0
 mini_df = pd.concat([mini_df, pd.DataFrame.from_records([temp_dict])])
@@ -107,18 +125,17 @@ window.mouseVisible = False
 helpers.wait_for_space_no_df(window, io)
 
 # ---------------------------------------------------------------------------
-# Pre-session mood VAS  (TIM-style, event code 90)
+# Pre-session mood VAS  (event 90)
 # ---------------------------------------------------------------------------
 serialHandler.report_event(ser, serialHandler.BIOPAC_EVENTS['PreVas_rating'])
 pre_scores = VAS.run_mood_vas(window, io, params)
 mood_df = dataHandler.insert_data_mood("pre", pre_scores, mood_df)
 
 # ---------------------------------------------------------------------------
-# Instructions  (NPU-style numbered slides, optional)
+# Instructions  (optional)
 # ---------------------------------------------------------------------------
 if not params["skipInstructions"]:
     pref = f"{params['gender'][0]}{params['language'][0]}"
-    keyboard = io.devices.keyboard
     for slide_num in range(1, 4):
         slide_path = f"./img/instructions/{slide_num}{pref}.jpeg"
         image.image = slide_path
@@ -129,8 +146,7 @@ if not params["skipInstructions"]:
         helpers.wait_for_space_no_df(window, io)
 
 # ---------------------------------------------------------------------------
-# Fixation cross before the P-block  (TIM-style, event code 95)
-# Duration is the configurable fixationDuration parameter.
+# Fixation cross before P-block  (event 95)
 # ---------------------------------------------------------------------------
 serialHandler.report_event(ser, serialHandler.BIOPAC_EVENTS['Fixation_cross'])
 fixation_img = visual.ImageStim(
@@ -138,14 +154,10 @@ fixation_img = visual.ImageStim(
 fixation_img.draw()
 window.mouseVisible = False
 window.flip()
-
-# Wait exactly fixationDuration seconds using core.wait — identical to TIM's fixation_before_block
-core.wait(float(params["fixationDuration"]))
+time.sleep(float(params["fixationDuration"]))
 
 # ---------------------------------------------------------------------------
-# Single P-condition block  (NPU predictable-threat logic)
-# Event codes inside block: 110 block-start, 120 cue-on, 130 cue-off,
-#                            +1 startle, +2 shock  — all NPU conventions
+# P-condition block  (NPU predictable threat, 120 s)
 # ---------------------------------------------------------------------------
 sound_path = helpers.randomize_sounds()[0]
 fear_level, df, mini_df = blockP.run_p_block(
@@ -153,14 +165,24 @@ fear_level, df, mini_df = blockP.run_p_block(
     df=df, mini_df=mini_df, block_num=1,
     ser=ser, fear_level=5, sound=sound_path)
 
-# Brief blank screen between block and post-VAS
 blank = visual.ImageStim(win=window, image="./img/blank.jpeg", units="norm", size=(2, 2))
 blank.draw()
 window.update()
 core.wait(2.0)
 
 # ---------------------------------------------------------------------------
-# Post-session mood VAS  (TIM-style, event code 92)
+# TIM block  (single block, ~235-240 s)
+# ---------------------------------------------------------------------------
+pain_df, event_onset_df = timBlock.run_tim_block(
+    window=window, params=params, io=io,
+    pain_df=pain_df, mood_df=mood_df, block_number=1)
+
+blank.draw()
+window.update()
+core.wait(2.0)
+
+# ---------------------------------------------------------------------------
+# Post-session mood VAS  (event 92)
 # ---------------------------------------------------------------------------
 serialHandler.report_event(ser, serialHandler.BIOPAC_EVENTS['PostRun_rating'])
 post_scores = VAS.run_mood_vas(window, io, params)
@@ -178,7 +200,8 @@ window.mouseVisible = False
 window.update()
 helpers.wait_for_space_no_df(window, io)
 
-dataHandler.export_data(params, fullDF=df, miniDF=mini_df, Mood=mood_df)
+dataHandler.export_data(params, fullDF=df, miniDF=mini_df, Mood=mood_df, Pain=pain_df)
+dataHandler.save_fmri_event_onset(params, event_onset_df, 1)
 
 print("===========================================\nFORT task complete.\n===========================================")
 window.close()

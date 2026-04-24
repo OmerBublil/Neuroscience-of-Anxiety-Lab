@@ -1,0 +1,4 @@
+,ExperimentName,Subject,Session,StartTime,CurrentTime,Step,Block,Scenario,TimeInCondition,Cue,Startle,Shock,FearRating,CueStart,CueEnd,ScenarioIndex,ShockType,VAS_score,VAS_type,VAS_RT
+0,FORT,12,1,1777024326.248904,0.0,Start,,,,,,,,,,,Sound,,,
+0,FORT,12,1,1777024326.248904,16.92,Game,1,Predictable,0.0,,,,,,,110,Sound,,,
+0,FORT,12,1,1777024326.248904,17.0,Game,1,Predictable,0.07,0,,,,,,130,Sound,,,

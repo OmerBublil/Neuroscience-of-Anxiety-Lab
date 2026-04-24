@@ -6,13 +6,46 @@
    "shockType": "Sound",
    "skipStartle": false,
    "recordPhysio": false,
-   "skipInstructions": true,
+   "skipInstructions": false,
    "fixationDuration": 3,
+   "fmriVersion": false,
+   "T2temp": 40.0,
+   "T4temp": 44.0,
+   "T8temp": 48.0,
+   "painSupport": false,
    "fullScreen": true,
    "screenSize": [
       1024,
       768
    ],
-   "startTime": 1776624322.025219,
-   "port": "COM4"
+   "startTime": 1777024441.624234,
+   "port": "COM4",
+   "nTrials": 6,
+   "temps": [
+      40.0,
+      44.0,
+      48.0
+   ],
+   "Ts": [
+      "T2",
+      "T4",
+      "T8"
+   ],
+   "colors": [
+      "Green",
+      "Yellow",
+      "Red"
+   ],
+   "fixationBeforeBlock": 8,
+   "preITIMin": 3,
+   "preITIMax": 5,
+   "postITIMin": 7,
+   "postITIMax": 9,
+   "painRateDuration": 7.0,
+   "secondParadigmSquareOnset": 2,
+   "secondParadigmSquareBlankScreen": 8,
+   "secondParadigmJitterMin": 0,
+   "secondParadigmJitterMax": 1,
+   "preRatingITI": 2,
+   "fmriStartTime": 0
 }

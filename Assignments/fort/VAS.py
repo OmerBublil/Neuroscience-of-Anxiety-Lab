@@ -48,6 +48,56 @@ ANSWERS_ENGLISH = [
 ]
 
 
+PAIN_RATING_QUESTION_HEBREW = ["עד כמה כאב החום?"]
+PAIN_RATING_QUESTION_ENGLISH = ["How painful was the heat?"]
+PAIN_RATING_ANSWERS_HEBREW = [["0", "01"]]
+PAIN_RATING_ANSWERS_ENGLISH = [["0", "10"]]
+
+
+def run_pain_vas(window: visual.Window, io, params: dict, mood_df, pain_df, duration=float('inf'), event_onset_df=None):
+    """TIM-style pain rating VAS. Returns numeric score."""
+    import helpers as _helpers
+    keyboard = io.devices.keyboard
+    is_hebrew = params["language"] == "Hebrew"
+    questions = PAIN_RATING_QUESTION_HEBREW if is_hebrew else PAIN_RATING_QUESTION_ENGLISH
+    answers = PAIN_RATING_ANSWERS_HEBREW if is_hebrew else PAIN_RATING_ANSWERS_ENGLISH
+
+    scale = ratingscale.RatingScale(
+        window,
+        labels=[answers[0][0][::-1], answers[0][1][::-1]] if is_hebrew else [answers[0][0], answers[0][1]],
+        scale=None, choices=None, low=0, high=10, precision=0.5, tickHeight=0.5,
+        size=2, markerStart=5, noMouse=True,
+        leftKeys=['left', 'b'], rightKeys=['right', 'd'],
+        textSize=0.6,
+        acceptText="לחצו לנעילה"[::-1] if is_hebrew else "Press to Lock",
+        showValue=False, showAccept=True,
+        acceptPreText="לחצו לנעילה"[::-1] if is_hebrew else "Press to Lock",
+        acceptSize=1.5, markerColor="Maroon", acceptKeys=["space", 'c'],
+        textColor="Black", lineColor="Black", disappear=False)
+
+    question_stim = visual.TextStim(
+        window,
+        text=questions[0][::-1] if is_hebrew else questions[0],
+        height=0.12, units='norm', pos=[0, 0.3], wrapWidth=2,
+        font="Open Sans", color="Black")
+
+    keyboard.getKeys()
+    core.wait(0.05)
+
+    end_time = time.time() + duration
+    while (duration != float('inf') and time.time() < end_time) or (duration == float('inf') and scale.noResponse):
+        scale.draw()
+        question_stim.draw()
+        window.mouseVisible = False
+        window.flip()
+        for ev in keyboard.getKeys(etype=Keyboard.KEY_PRESS):
+            if ev.key == "escape":
+                _helpers.tim_graceful_shutdown(window, params, mood_df, pain_df, event_onset_df)
+            core.wait(0.05)
+
+    return scale.getRating()
+
+
 def run_mood_vas(window: visual.Window, io, params: dict) -> dict:
     """
     Display TIM-style 5-question mood VAS.

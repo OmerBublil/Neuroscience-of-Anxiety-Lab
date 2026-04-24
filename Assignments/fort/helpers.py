@@ -37,6 +37,7 @@ def wait_for_space_no_df(window: visual.Window, io):
             if event.key == "escape":
                 window.close()
                 core.quit()
+        core.wait(0.05)
 
 
 def wait_for_space(window: visual.Window, io, params: dict, df: pd.DataFrame, dict_for_df: dict):
@@ -174,3 +175,120 @@ def randomize_sounds():
     sounds_in_order = [SOUNDS[x % 2] for x in numbers]
     print(sounds_in_order)
     return sounds_in_order
+
+
+# ---------------------------------------------------------------------------
+# TIM timing helpers
+# ---------------------------------------------------------------------------
+
+PRE_BLOCK_FIXATION_TIME = 8
+
+
+def create_timing_array(params):
+    random.seed(time.time())
+    while True:
+        timings = []
+        for i in range(params['nTrials']):
+            timing_dict = {
+                'preITI': random.uniform(params['preITIMin'], params['preITIMax']),
+                'squareOnset': params['secondParadigmSquareOnset'],
+                'squareBlankScreen': params['secondParadigmSquareBlankScreen'],
+                'squareJitter': random.uniform(params['secondParadigmJitterMin'], params['secondParadigmJitterMax']),
+                'painTime': 6,
+                'preRatingITI': params['preRatingITI'],
+                'painRating': params['painRateDuration'],
+                'postITI': random.uniform(params['postITIMin'], params['postITIMax']),
+            }
+            timings.append(timing_dict)
+        timings_sum = sum_timing_array(timings) + PRE_BLOCK_FIXATION_TIME
+        print(f"Timing Sum = {timings_sum}\n==================================")
+        if 235 <= timings_sum <= 240:
+            return timings
+
+
+def sum_timing_array(timings: list):
+    time_sum = 0
+    for timing_dict in timings:
+        time_sum += sum(timing_dict.values())
+    return time_sum
+
+
+def tim_wait_for_time(window: visual.Window, params, mood_df, pain_df, start_time, display_time, keyboard, event_onset_df=None):
+    while time.time() < start_time + display_time:
+        for event in keyboard.getKeys():
+            if event.key == "escape":
+                tim_graceful_shutdown(window, params, mood_df, pain_df, event_onset_df)
+        core.wait(0.05)
+
+
+def tim_iti(window: visual.Window, params, keyboard, mood_df, pain_df, display_time, event_onset_df=None):
+    square = visual.ImageStim(window, image="./img/blank.jpeg", units="norm", size=(2, 2))
+    square.draw()
+    window.mouseVisible = False
+    window.flip()
+    start_time = time.time()
+    tim_wait_for_time(window, params, mood_df, pain_df, start_time, display_time, keyboard, event_onset_df)
+
+
+def tim_fixation_before_block(window: visual.Window, params, mood_df, pain_df, keyboard, event_onset_df=None):
+    image = visual.ImageStim(window, "./img/plus.jpeg", units="norm", size=(2, 2))
+    image.draw()
+    window.mouseVisible = False
+    window.flip()
+    tim_wait_for_time(window, params, mood_df, pain_df, time.time(), params['fixationBeforeBlock'], keyboard, event_onset_df)
+
+
+def tim_wait_for_time_with_periodic_events(window, params, mood_df, pain_df, start_time, display_time, keyboard, prefix, sec, event_onset_df):
+    T_TO_HEAT = {'T2': 1, 'T4': 2, 'T8': 3}
+    while time.time() < start_time + display_time:
+        if sec <= time.time() - start_time <= sec + 0.1:
+            print(f"Sending event. Timediff: {time.time() - start_time}, sec: {sec}")
+            event_onset_df = tim_add_event(params, f'{prefix}_{sec}', 2, T_TO_HEAT[prefix], event_onset_df)
+            sec += 2
+        for ev in keyboard.getKeys():
+            if ev.key == "escape":
+                tim_graceful_shutdown(window, params, mood_df, pain_df, event_onset_df)
+        core.wait(0.02)
+    return sec, event_onset_df
+
+
+def show_waiting_for_next_block(window: visual.Window, params: dict):
+    img = f"./img/wait_E.jpeg" if params['language'] == 'English' else f"./img/wait_{params['gender'][0]}.jpeg"
+    image = visual.ImageStim(window, img, units="norm", size=(2, 2))
+    image.draw()
+    window.flip()
+
+
+def show_waiting_for_ra_space(window: visual.Window, params: dict):
+    img = f"./img/waitForSpace_E.jpeg" if params['language'] == 'English' else f"./img/waitForSpace_H.jpeg"
+    image = visual.ImageStim(window, img, units="norm", size=(2, 2))
+    image.draw()
+    window.flip()
+
+
+def tim_add_event(params: dict, event_name: str, event_time, heat_level, event_onset_file: pd.DataFrame):
+    event = serialHandler.PARADIGM_2_BIOPAC_EVENTS[event_name]
+    serialHandler.report_event(params['serialBiopac'], event)
+    return dataHandler.insert_data_fmri_events(params, event_time, event, heat_level, event_onset_file)
+
+
+def tim_graceful_shutdown(window, params, mood_df, pain_df, event_onset_df=None):
+    dataHandler.export_data(params, Mood=mood_df, Pain=pain_df)
+    dataHandler.save_fmri_event_onset(params, event_onset_df, "backup")
+    print("Experiment Ended\n===========================================")
+    window.close()
+    core.quit()
+    exit()
+
+
+def tim_wait_for_space(window: visual.Window, params, mood_df, pain_df, io, event_onset_df=None):
+    keyboard = io.devices.keyboard
+    keyboard.getKeys()
+    core.wait(0.1)
+    while True:
+        for event in keyboard.getKeys():
+            if event.key in [" ", 'c']:
+                return
+            elif event.key == "escape":
+                tim_graceful_shutdown(window, params, mood_df, pain_df, event_onset_df)
+        core.wait(0.05)
