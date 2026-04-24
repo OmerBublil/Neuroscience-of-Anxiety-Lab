@@ -1,5 +1,5 @@
 {
-   "Subject": "2",
+   "Subject": "",
    "session": 1,
    "gender": "Female",
    "language": "Hebrew",
@@ -18,7 +18,7 @@
       1024,
       768
    ],
-   "startTime": 1777026232.283664,
+   "startTime": 1777027679.861332,
    "port": "COM4",
    "nTrials": 6,
    "temps": [
@@ -47,5 +47,8 @@
    "secondParadigmJitterMin": 0,
    "secondParadigmJitterMax": 1,
    "preRatingITI": 2,
-   "fmriStartTime": 0
+   "fmriStartTime": 0,
+   "calibrationTime": 3,
+   "skipCalibration": true,
+   "videosTiming": "After"
 }

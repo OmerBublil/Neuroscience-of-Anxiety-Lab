@@ -31,6 +31,8 @@ import blockP
 import VAS
 import serialHandler
 import timBlock
+import npuInstructions
+import timInstructions
 
 # ---------------------------------------------------------------------------
 # Startup & configuration
@@ -76,6 +78,10 @@ params = {
     'secondParadigmJitterMax':      1,
     'preRatingITI':                 2,
     'fmriStartTime':                0,
+    # NPU instruction params
+    'calibrationTime':              int(configDialogBank[8]) if configDialogBank[8] not in (None, "") else configDialog.FIXATION_DURATION_DEFAULT,
+    'skipCalibration':              True,   # calibration handled by separate fixation screen
+    'videosTiming':                 'After',
 }
 
 if not os.path.exists("./data"):
@@ -132,18 +138,10 @@ pre_scores = VAS.run_mood_vas(window, io, params)
 mood_df = dataHandler.insert_data_mood("pre", pre_scores, mood_df)
 
 # ---------------------------------------------------------------------------
-# Instructions  (optional)
+# NPU Instructions  (identical to original NPU assignment)
 # ---------------------------------------------------------------------------
 if not params["skipInstructions"]:
-    pref = f"{params['gender'][0]}{params['language'][0]}"
-    for slide_num in range(1, 4):
-        slide_path = f"./img/instructions/{slide_num}{pref}.jpeg"
-        image.image = slide_path
-        image.setSize((2, 2))
-        image.draw()
-        window.update()
-        window.mouseVisible = False
-        helpers.wait_for_space_no_df(window, io)
+    df, mini_df = npuInstructions.show_instructions(params, window, image, io, df, mini_df, ser)
 
 # ---------------------------------------------------------------------------
 # Fixation cross before P-block  (event 95)
@@ -169,6 +167,12 @@ blank = visual.ImageStim(win=window, image="./img/blank.jpeg", units="norm", siz
 blank.draw()
 window.update()
 core.wait(2.0)
+
+# ---------------------------------------------------------------------------
+# TIM Instructions  (identical to original TIM assignment)
+# ---------------------------------------------------------------------------
+if not params["skipInstructions"]:
+    timInstructions.instructions(window, params, io)
 
 # ---------------------------------------------------------------------------
 # TIM block  (single block, ~235-240 s)
