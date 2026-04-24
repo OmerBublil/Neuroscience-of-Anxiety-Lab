@@ -1,5 +1,5 @@
 {
-   "Subject": "",
+   "Subject": "2",
    "session": 1,
    "gender": "Female",
    "language": "Hebrew",
@@ -18,7 +18,7 @@
       1024,
       768
    ],
-   "startTime": 1777024441.624234,
+   "startTime": 1777026232.283664,
    "port": "COM4",
    "nTrials": 6,
    "temps": [

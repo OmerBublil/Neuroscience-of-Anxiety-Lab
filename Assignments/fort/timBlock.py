@@ -44,17 +44,18 @@ def run_tim_block(window: visual.Window, params: dict, io,
                     helpers.tim_graceful_shutdown(window, params, mood_df, pain_df)
             core.wait(0.05)
 
-    helpers.show_waiting_for_next_block(window, params)
-    keyboard.getKeys()
-    five = False
-    while not five:
-        for event in keyboard.getKeys():
-            if event.key == '5':
-                five = True
-                break
-            elif event.key == 'escape':
-                helpers.tim_graceful_shutdown(window, params, mood_df, pain_df)
-        core.wait(0.05)
+    if params.get("fmriVersion"):
+        helpers.show_waiting_for_next_block(window, params)
+        keyboard.getKeys()
+        five = False
+        while not five:
+            for event in keyboard.getKeys():
+                if event.key == '5':
+                    five = True
+                    break
+                elif event.key == 'escape':
+                    helpers.tim_graceful_shutdown(window, params, mood_df, pain_df)
+            core.wait(0.05)
 
     params['fmriStartTime'] = time.time()
     event_onset_df = helpers.tim_add_event(

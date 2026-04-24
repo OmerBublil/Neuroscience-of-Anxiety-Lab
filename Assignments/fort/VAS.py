@@ -84,8 +84,11 @@ def run_pain_vas(window: visual.Window, io, params: dict, mood_df, pain_df, dura
     keyboard.getKeys()
     core.wait(0.05)
 
+    has_moved = False
     end_time = time.time() + duration
-    while (duration != float('inf') and time.time() < end_time) or (duration == float('inf') and scale.noResponse):
+    while (duration != float('inf') and (time.time() < end_time or not has_moved)) or (duration == float('inf') and (scale.noResponse or not has_moved)):
+        if not scale.noResponse and not has_moved:
+            scale.reset()
         scale.draw()
         question_stim.draw()
         window.mouseVisible = False
@@ -93,7 +96,9 @@ def run_pain_vas(window: visual.Window, io, params: dict, mood_df, pain_df, dura
         for ev in keyboard.getKeys(etype=Keyboard.KEY_PRESS):
             if ev.key == "escape":
                 _helpers.tim_graceful_shutdown(window, params, mood_df, pain_df, event_onset_df)
-            core.wait(0.05)
+            elif ev.key in ('left', 'right', 'b', 'd'):
+                has_moved = True
+        core.wait(0.02)
 
     return scale.getRating()
 
@@ -148,7 +153,10 @@ def run_mood_vas(window: visual.Window, io, params: dict) -> dict:
         keyboard.getKeys()
         core.wait(0.05)
 
-        while scale.noResponse:
+        has_moved = False
+        while scale.noResponse or not has_moved:
+            if not scale.noResponse and not has_moved:
+                scale.reset()
             scale.draw()
             question_stim.draw()
             window.mouseVisible = False
@@ -157,6 +165,9 @@ def run_mood_vas(window: visual.Window, io, params: dict) -> dict:
                 if ev.key == "escape":
                     window.close()
                     core.quit()
+                elif ev.key in ('left', 'right', 'b', 'd'):
+                    has_moved = True
+            core.wait(0.02)
 
         scores[LABELS[i]] = scale.getRating()
 
